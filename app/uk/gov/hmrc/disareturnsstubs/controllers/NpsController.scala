@@ -22,7 +22,7 @@ import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.disareturnsstubs.controllers.action.AuthorizationFilter
 import uk.gov.hmrc.disareturnsstubs.models.ErrorResponse._
-import uk.gov.hmrc.disareturnsstubs.models.ReturnResultResponse
+import uk.gov.hmrc.disareturnsstubs.models.{ErrorResponse, MonthlyReport, ReturnResultResponse}
 import uk.gov.hmrc.disareturnsstubs.repositories.ReportRepository
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -61,7 +61,9 @@ class NpsController @Inject() (
   def getMonthlyReport(
     isaReferenceNumber: String,
     taxYear: String,
-    month: String
+    month: String,
+    skip: Int,
+    take: Int
   ): Action[AnyContent] = Action.async { _ =>
     if (isaReferenceNumber == "Z1500") {
       Future.successful(
@@ -72,15 +74,22 @@ class NpsController @Inject() (
         .getMonthlyReport(isaReferenceNumber, taxYear, month)
         .map {
           case Some(report) =>
-            logger.info(
-              s"Successful retrieval of monthly report for IM ref: [$isaReferenceNumber] for [$month][$taxYear]"
-            )
-            Ok(
-              Json.toJson(
-                ReturnResultResponse(totalRecords = report.returnResults.size, returnResults = report.returnResults)
-              )
-            )
-          case None         =>
+            getReportPage(report, skip, take) match {
+              case Left(error) =>
+                logger.warn(s"Page not found in report for IM ref: [$isaReferenceNumber] for [$month][$taxYear]")
+                NotFound(Json.toJson(error))
+              case Right(page) =>
+                logger.info(
+                  s"Successful retrieval of monthly report for IM ref: [$isaReferenceNumber] for [$month][$taxYear]"
+                )
+                Ok(
+                  Json.toJson(
+                    ReturnResultResponse(totalRecords = report.returnResults.size, returnResults = page.returnResults)
+                  )
+                )
+            }
+
+          case None =>
             logger.warn(s"No monthly report found for IM ref: [$isaReferenceNumber] for [$month][$taxYear]")
             NotFound(Json.toJson(reportNotFoundError))
         }
@@ -91,5 +100,14 @@ class NpsController @Inject() (
           InternalServerError(Json.toJson(internalServerErr(s"Failed with exception: ${ex.getMessage}")))
         }
     }
+  }
+
+  private def getReportPage(fullReport: MonthlyReport, skip: Int, take: Int): Either[ErrorResponse, MonthlyReport] = {
+    val startOfPage  = skip * take
+    val totalRecords = fullReport.returnResults.size
+    val endOfPage    = (startOfPage + take).min(totalRecords)
+
+    if (startOfPage >= totalRecords) Left(pageNotFoundError(skip))
+    else Right(fullReport.copy(returnResults = fullReport.returnResults.slice(startOfPage, endOfPage)))
   }
 }

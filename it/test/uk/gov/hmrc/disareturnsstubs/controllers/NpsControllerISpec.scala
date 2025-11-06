@@ -144,10 +144,12 @@ class NpsControllerISpec extends BaseISpec {
 
   "GET /reports/:isaReferenceNumber/:taxYear/:month" should {
 
+    val skip = 0
+
     "return 200 OK and the returnResults when a report exists" in {
       await(reportRepository.insertReport(report))
 
-      val request = FakeRequest(GET, s"/monthly/$isaManagerReferenceNumber/$taxYear/$month/results")
+      val request = FakeRequest(GET, s"/monthly/$isaManagerReferenceNumber/$taxYear/$month/results?skip=$skip&take=10")
       val result  = route(app, request).get
 
       status(result) mustBe OK
@@ -164,9 +166,22 @@ class NpsControllerISpec extends BaseISpec {
       first.issueIdentified.code mustBe "UNABLE_TO_IDENTIFY_INVESTOR"
     }
 
+    "return 404 PageNotFound when page does not exist in report" in {
+      await(reportRepository.collection.drop.toFuture())
+      await(reportRepository.insertReport(report))
+
+      val skip = 1
+      val request = FakeRequest(GET, s"/monthly/$isaManagerReferenceNumber/$taxYear/$month/results?skip=$skip&take=10")
+      val result  = route(app, request).get
+
+      status(result) mustBe NOT_FOUND
+      (contentAsJson(result) \ "code").asOpt[String] mustBe Some("PAGE_NOT_FOUND")
+      (contentAsJson(result) \ "message").asOpt[String] mustBe Some(s"No page $skip found")
+    }
+
     "return 404 NotFound when no report exists for given identifiers" in {
       await(reportRepository.collection.drop.toFuture())
-      val request = FakeRequest(GET, s"/monthly/$isaManagerReferenceNumber/$taxYear/$month/results")
+      val request = FakeRequest(GET, s"/monthly/$isaManagerReferenceNumber/$taxYear/$month/results?skip=$skip&take=10")
       val result  = route(app, request).get
 
       status(result) mustBe NOT_FOUND
@@ -175,7 +190,7 @@ class NpsControllerISpec extends BaseISpec {
     }
 
     "return 500 InternalServerError when isaReferenceNumber is Z1500" in {
-      val request = FakeRequest(GET, s"/monthly/Z1500/$taxYear/$month/results")
+      val request = FakeRequest(GET, s"/monthly/Z1500/$taxYear/$month/results?skip=$skip&take=10")
       val result  = route(app, request).get
 
       status(result) mustBe INTERNAL_SERVER_ERROR

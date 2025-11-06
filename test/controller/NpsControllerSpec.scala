@@ -48,6 +48,22 @@ class NpsControllerSpec extends BaseUnitSpec {
           code = "UNABLE_TO_IDENTIFY_INVESTOR",
           message = "Unable to identify investor"
         )
+      ),
+      ReturnResult(
+        accountNumber = "100000002",
+        nino = "AB123457C",
+        issueIdentified = IssueIdentifiedMessage(
+          code = "UNABLE_TO_IDENTIFY_INVESTOR",
+          message = "Unable to identify investor"
+        )
+      ),
+      ReturnResult(
+        accountNumber = "100000003",
+        nino = "AB123457C",
+        issueIdentified = IssueIdentifiedMessage(
+          code = "UNABLE_TO_IDENTIFY_INVESTOR",
+          message = "Unable to identify investor"
+        )
       )
     )
   )
@@ -104,6 +120,9 @@ class NpsControllerSpec extends BaseUnitSpec {
 
   "getMonthlyReport" should {
 
+    val skip = 0
+    val take = 10
+
     "return 200 OK with returnResults when report exists" in {
       when(
         mockReportRepository.getMonthlyReport(
@@ -114,18 +133,49 @@ class NpsControllerSpec extends BaseUnitSpec {
       ).thenReturn(Future.successful(Some(sampleReport)))
 
       val request = FakeRequest(GET, s"/nps/monthly/$isaManagerReference/2025-26/APR/results")
-      val result  = controller.getMonthlyReport(isaManagerReference, "2025-26", "APR")(request)
+      val result  = controller.getMonthlyReport(isaManagerReference, "2025-26", "APR", skip, take)(request)
 
       status(result) shouldBe OK
       val jsonBody = contentAsJson(result)
       (jsonBody \\ "accountNumber").map(_.as[String]) should contain("100000001")
     }
 
+    "return 200 OK with correct pages across multiple pages" in {
+      when(
+        mockReportRepository.getMonthlyReport(
+          any(),
+          any(),
+          any()
+        )
+      ).thenReturn(Future.successful(Some(sampleReport)))
+
+      val request = FakeRequest(GET, s"/nps/monthly/$isaManagerReference/2025-26/APR/results")
+
+      val resultForPage0 = controller.getMonthlyReport(isaManagerReference, "2025-26", "APR", 0, 2)(request)
+      val resultForPage1 = controller.getMonthlyReport(isaManagerReference, "2025-26", "APR", 1, 2)(request)
+
+      val jsonBodyPage0 = contentAsJson(resultForPage0)
+      val jsonBodyPage1 = contentAsJson(resultForPage1)
+
+      (jsonBodyPage0 \ "returnResults").as[Seq[ReturnResult]].size shouldBe 2
+      (jsonBodyPage1 \ "returnResults").as[Seq[ReturnResult]].size shouldBe 1
+    }
+
+    "return 404 PageNotFound when page does not exist" in {
+      when(mockReportRepository.getMonthlyReport(any(), any(), any())).thenReturn(Future.successful(Some(sampleReport)))
+
+      val request = FakeRequest(GET, s"/nps/monthly/$isaManagerReference/2025-26/APR/results")
+      val result  = controller.getMonthlyReport(isaManagerReference, "2025-26", "APR", 1, take)(request)
+
+      status(result)                                 shouldBe NOT_FOUND
+      (contentAsJson(result) \ "code").asOpt[String] shouldBe Some("PAGE_NOT_FOUND")
+    }
+
     "return 404 NotFound when no report exists" in {
       when(mockReportRepository.getMonthlyReport(any(), any(), any())).thenReturn(Future.successful(None))
 
       val request = FakeRequest(GET, s"/nps/monthly/$isaManagerReference/2025-26/APR/results")
-      val result  = controller.getMonthlyReport(isaManagerReference, "2025-26", "APR")(request)
+      val result  = controller.getMonthlyReport(isaManagerReference, "2025-26", "APR", skip, take)(request)
 
       status(result)                                 shouldBe NOT_FOUND
       (contentAsJson(result) \ "code").asOpt[String] shouldBe Some("REPORT_NOT_FOUND")
@@ -133,7 +183,7 @@ class NpsControllerSpec extends BaseUnitSpec {
 
     "return 500 InternalServerError when isaReferenceNumber is Z1500" in {
       val request = FakeRequest(GET, s"/nps/monthly/Z1500/2025-26/APR/results")
-      val result  = controller.getMonthlyReport("Z1500", "2025-26", "APR")(request)
+      val result  = controller.getMonthlyReport("Z1500", "2025-26", "APR", skip, take)(request)
 
       status(result)                                    shouldBe INTERNAL_SERVER_ERROR
       (contentAsJson(result) \ "code").asOpt[String]    shouldBe Some("INTERNAL_SERVER_ERROR")

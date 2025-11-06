@@ -26,5 +26,6 @@ object ErrorResponse {
   val serviceUnavailableError: ErrorResponse  = ErrorResponse("SERVICE_UNAVAILABLE", "Service unavailable")
   val reportNotFoundError: ErrorResponse      = ErrorResponse("REPORT_NOT_FOUND", "Report not found")
 
+  def pageNotFoundError(pageIndex: Int): ErrorResponse  = ErrorResponse("PAGE_NOT_FOUND", s"No page $pageIndex found")
   def internalServerErr(message: String): ErrorResponse = ErrorResponse("INTERNAL_SERVER_ERROR", message)
 }

@@ -11,4 +11,4 @@ POST    /nps/submit/:isaManagerReferenceNumber                             uk.go
 
 POST    /nps/declaration/:isaManagerReferenceNumber                        uk.gov.hmrc.disareturnsstubs.controllers.NpsController.send(isaManagerReferenceNumber: String)
 
-GET     /monthly/:isaManagerReferenceNumber/:taxYear/:month/results        uk.gov.hmrc.disareturnsstubs.controllers.NpsController.getMonthlyReport(isaManagerReferenceNumber: String, taxYear: String, month: String )
+GET     /monthly/:isaManagerReferenceNumber/:taxYear/:month/results        uk.gov.hmrc.disareturnsstubs.controllers.NpsController.getMonthlyReport(isaManagerReferenceNumber: String, taxYear: String, month: String, skip: Int, take: Int)
