@@ -49,10 +49,10 @@ class ReportingWindowOverrideRepository @Inject() (
       replaceIndexes = true
     ) {
 
-  def set(credId: String, request: ReportingWindowOverrideRequest): Future[Unit] = {
+  def set(zReference: String, request: ReportingWindowOverrideRequest): Future[Unit] = {
     val now              = Instant.now(clock)
     val overrideDocument = ReportingWindowOverride(
-      _id = credId,
+      _id = zReference,
       startDate = request.startDate,
       endDate = request.endDate,
       expiresAt = now.plus(appConfig.reportingWindowOverrideTtlHours.toLong, ChronoUnit.HOURS),
@@ -61,7 +61,7 @@ class ReportingWindowOverrideRepository @Inject() (
 
     collection
       .replaceOne(
-        Filters.eq("_id", credId),
+        Filters.eq("_id", zReference),
         overrideDocument,
         ReplaceOptions().upsert(true)
       )
@@ -69,10 +69,16 @@ class ReportingWindowOverrideRepository @Inject() (
       .map(_ => ())
   }
 
-  def getActive(credId: String): Future[Option[ReportingWindowOverride]] =
+  def getActive(zReference: String): Future[Option[ReportingWindowOverride]] =
     collection
-      .find(Filters.eq("_id", credId))
+      .find(Filters.eq("_id", zReference))
       .first()
       .toFutureOption()
       .map(_.filter(_.expiresAt.isAfter(Instant.now(clock))))
+
+  def deleteByZReferences(zReferences: Seq[String]): Future[Unit] =
+    collection
+      .deleteMany(Filters.in("_id", zReferences: _*))
+      .toFuture()
+      .map(_ => ())
 }

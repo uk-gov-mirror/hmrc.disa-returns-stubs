@@ -2,7 +2,7 @@
 
 POST    /monthly/:zReference/reconciliation                                                       uk.gov.hmrc.disareturnsstubs.controllers.GenerateReportController.create(zReference: String)
 
-PUT     /reporting-window-override                                                                uk.gov.hmrc.disareturnsstubs.controllers.ReportingWindowOverrideController.set()
+PUT     /reporting-window-override/:zReference                                                    uk.gov.hmrc.disareturnsstubs.controllers.ReportingWindowOverrideController.set(zReference: String)
 
 ## ETMP routes
 
@@ -40,4 +40,4 @@ PUT     /disa-returns-submission/monthly/:zReference/:taxYear/:month/submissions
 
 POST    /disa-returns-submission/monthly/:zReference/:taxYear/:month/declarations                 uk.gov.hmrc.disareturnsstubs.controllers.SubmissionsController.declare(zReference: String, taxYear: String, month: String)
 
-GET     /disa-returns-submission/reporting-window/status                                          uk.gov.hmrc.disareturnsstubs.controllers.ReportingWindowController.status()
+GET     /disa-returns-submission/reporting-window/status/:zReference                              uk.gov.hmrc.disareturnsstubs.controllers.ReportingWindowController.status(zReference: String)

@@ -49,9 +49,9 @@ class ReportingWindowOverrideISpec extends BaseISpec with BeforeAndAfterEach {
   }
 
   "reporting window override journey" should {
-    "store and apply an override only to the identified user" in {
-      val setRequest = FakeRequest(PUT, "/reporting-window-override")
-        .withHeaders(CONTENT_TYPE -> JSON, "X-Cred-Id" -> "cred-1")
+    "store and apply an override only to the normalized Z-reference" in {
+      val setRequest = FakeRequest(PUT, "/reporting-window-override/z1234")
+        .withHeaders(CONTENT_TYPE -> JSON)
         .withJsonBody(
           Json.obj(
             "startDate" -> now.minusSeconds(60).toString,
@@ -63,13 +63,13 @@ class ReportingWindowOverrideISpec extends BaseISpec with BeforeAndAfterEach {
 
       val overridden = route(
         app,
-        FakeRequest(GET, "/disa-returns-submission/reporting-window/status")
-          .withHeaders(AUTHORIZATION -> "internal-auth-token", "X-Cred-Id" -> "cred-1")
+        FakeRequest(GET, "/disa-returns-submission/reporting-window/status/Z1234")
+          .withHeaders(AUTHORIZATION -> "internal-auth-token")
       ).get
       val otherUser = route(
         app,
-        FakeRequest(GET, "/disa-returns-submission/reporting-window/status")
-          .withHeaders(AUTHORIZATION -> "internal-auth-token", "X-Cred-Id" -> "cred-2")
+        FakeRequest(GET, "/disa-returns-submission/reporting-window/status/Z5678")
+          .withHeaders(AUTHORIZATION -> "internal-auth-token")
       ).get
 
       (contentAsJson(overridden) \ "reportingWindowOpen").as[Boolean] mustBe true
@@ -77,8 +77,8 @@ class ReportingWindowOverrideISpec extends BaseISpec with BeforeAndAfterEach {
     }
 
     "reject an invalid override without replacing the existing value" in {
-      val request = FakeRequest(PUT, "/reporting-window-override")
-        .withHeaders(CONTENT_TYPE -> JSON, "X-Cred-Id" -> "cred-1")
+      val request = FakeRequest(PUT, "/reporting-window-override/Z1234")
+        .withHeaders(CONTENT_TYPE -> JSON)
         .withJsonBody(
           Json.obj(
             "startDate" -> now.plusSeconds(60).toString,
@@ -87,7 +87,23 @@ class ReportingWindowOverrideISpec extends BaseISpec with BeforeAndAfterEach {
         )
 
       status(route(app, request).get) mustBe BAD_REQUEST
-      await(overrideRepository.getActive("cred-1")) mustBe None
+      await(overrideRepository.getActive("Z1234")) mustBe None
+    }
+
+    "reject invalid Z-references on write and status routes" in {
+      val writeRequest = FakeRequest(PUT, "/reporting-window-override/Z123")
+        .withHeaders(CONTENT_TYPE -> JSON)
+        .withJsonBody(
+          Json.obj(
+            "startDate" -> now.minusSeconds(60).toString,
+            "endDate"   -> now.plusSeconds(60).toString
+          )
+        )
+      val statusRequest = FakeRequest(GET, "/disa-returns-submission/reporting-window/status/not-a-z-reference")
+        .withHeaders(AUTHORIZATION -> "internal-auth-token")
+
+      status(route(app, writeRequest).get) mustBe BAD_REQUEST
+      status(route(app, statusRequest).get) mustBe BAD_REQUEST
     }
   }
 }

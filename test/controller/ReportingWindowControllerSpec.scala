@@ -29,50 +29,38 @@ import scala.concurrent.Future
 
 class ReportingWindowControllerSpec extends BaseUnitSpec {
 
-  private val credentialIdHeader = "X-Cred-Id"
-
   "status" should {
-    "use the credential ID header" in {
+    "use the normalized Z-reference path parameter" in {
       val service    = mock[ReportingWindowService]
       val controller = new ReportingWindowController(stubControllerComponents(), service, stubAuthFilter)
-      when(service.isOpen(eqTo("cred-1"))).thenReturn(Future.successful(true))
+      when(service.isOpen(eqTo("Z1234"))).thenReturn(Future.successful(true))
 
-      val result = controller.status(FakeRequest().withHeaders(credentialIdHeader -> "cred-1"))
+      val result = controller.status(" z1234 ")(FakeRequest())
 
       status(result)                                              shouldBe OK
       (contentAsJson(result) \ "reportingWindowOpen").as[Boolean] shouldBe true
-      verify(service).isOpen("cred-1")
+      verify(service).isOpen("Z1234")
     }
 
     "return a closed status from the service" in {
       val service    = mock[ReportingWindowService]
       val controller = new ReportingWindowController(stubControllerComponents(), service, stubAuthFilter)
-      when(service.isOpen(eqTo("cred-1"))).thenReturn(Future.successful(false))
+      when(service.isOpen(eqTo("Z1234"))).thenReturn(Future.successful(false))
 
-      val result = controller.status(FakeRequest().withHeaders(credentialIdHeader -> "cred-1"))
+      val result = controller.status("Z1234")(FakeRequest())
 
       status(result)                                              shouldBe OK
       (contentAsJson(result) \ "reportingWindowOpen").as[Boolean] shouldBe false
     }
 
-    "return BadRequest when the credential ID header is missing" in {
+    "return BadRequest for an invalid Z-reference" in {
       val service    = mock[ReportingWindowService]
       val controller = new ReportingWindowController(stubControllerComponents(), service, stubAuthFilter)
 
-      val result = controller.status(FakeRequest())
+      val result = controller.status("Z12345")(FakeRequest())
 
       status(result)                               shouldBe BAD_REQUEST
-      (contentAsJson(result) \ "error").as[String] shouldBe "Missing X-Cred-Id header"
-      verify(service, never()).isOpen(org.mockito.ArgumentMatchers.any())
-    }
-
-    "return BadRequest when the credential ID header is blank" in {
-      val service    = mock[ReportingWindowService]
-      val controller = new ReportingWindowController(stubControllerComponents(), service, stubAuthFilter)
-
-      val result = controller.status(FakeRequest().withHeaders(credentialIdHeader -> "   "))
-
-      status(result) shouldBe BAD_REQUEST
+      (contentAsJson(result) \ "error").as[String] shouldBe "Invalid zReference"
       verify(service, never()).isOpen(org.mockito.ArgumentMatchers.any())
     }
   }

@@ -20,7 +20,7 @@ Reference instructions for [setting up docker](https://docs.tax.service.gov.uk/m
 ### Running the app locally
 
 ```bash
-sbt run
+sbt run -Dapplication.router=testOnlyDoNotUseInAppConf.Routes
 ```
 
 You can then query the app to ensure it is working with the following command:
@@ -152,6 +152,22 @@ POST /disa-returns-submission/monthly/:zReference/:taxYear/:month/declarations
 |:---------|:------:|:----:|
 | Monthly return declared | 200 | OK |
 
+## Retrieve Reporting Window Status
+
+- Returns the reporting-window status for a Z-reference. The path value is case-normalized and must be `Z` followed by four digits.
+
+### Endpoint:
+```bash
+GET /disa-returns-submission/reporting-window/status/:zReference
+```
+
+### Responses:
+
+| Scenario | Status | Type |
+|:---------|:------:|:----:|
+| Valid Z-reference | 200 | OK |
+| Invalid Z-reference | 400 | BAD REQUEST |
+
 
 ## ETMP Retrieve Obligation Status
 
@@ -242,6 +258,79 @@ POST /upscan/upload
 - The `reject`, `infected`, `invalid` and `unknown` scenarios are simulated by `upscan-stub` itself - see its [`UploadController`](https://github.com/hmrc/upscan-stub/blob/main/app/uk/gov/hmrc/upscanstub/controller/UploadController.scala) for implementation details.
 
 # Stub Setup Endpoints
+
+Test-only endpoints require the service to run with
+`-Dapplication.router=testOnlyDoNotUseInAppConf.Routes`.
+
+## Clean Reconciliation Report Data
+
+Deletes report events and their currently associated report issues for the supplied Z-references. It must not run
+during active traffic for those Z-references.
+
+### Endpoint:
+```bash
+POST /test-only/reconciliation-report-data/cleanup
+Content-Type: application/json
+```
+
+### Request Body Example:
+```json
+{
+  "zReferences": ["Z1000", "Z1001"]
+}
+```
+
+### Responses:
+
+| Scenario | Status | Type |
+|:---------|:------:|:----:|
+| Data deleted | 204 | NO CONTENT |
+| Empty or invalid request body | 400 | BAD REQUEST |
+
+Z-references are case-normalized and deduplicated before deletion.
+
+## Clean Reporting Window Overrides
+
+Deletes reporting-window overrides for the supplied Z-references. It must not run during active traffic for those
+Z-references.
+
+### Endpoint:
+```bash
+POST /test-only/reporting-window-overrides/cleanup
+Content-Type: application/json
+```
+
+### Request Body Example:
+```json
+{
+  "zReferences": ["Z5000", "Z5001"]
+}
+```
+
+### Responses:
+
+| Scenario | Status | Type |
+|:---------|:------:|:----:|
+| Data deleted | 204 | NO CONTENT |
+| Empty or invalid request body | 400 | BAD REQUEST |
+
+Z-references are case-normalized and deduplicated before deletion.
+
+## Set Reporting Window Override
+
+- Stores a temporary reporting-window override for a Z-reference. The normalized Z-reference is used as the record ID.
+
+### Endpoint:
+```bash
+PUT /reporting-window-override/:zReference
+```
+
+### Responses:
+
+| Scenario | Status | Type |
+|:---------|:------:|:----:|
+| Override stored | 204 | NO CONTENT |
+| Invalid Z-reference or request body | 400 | BAD REQUEST |
 
 ## ETMP Open Obligation Status
 

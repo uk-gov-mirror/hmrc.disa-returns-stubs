@@ -36,6 +36,11 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
   lazy val appConfig: AppConfig           = inject[AppConfig]
   lazy val repo                           = new ReportIssueRepository(mongoComponent, appConfig)
 
+  private def resetCollection(): Unit = {
+    await(repo.collection.drop().toFuture())
+    await(repo.ensureIndexes())
+  }
+
   val issue1: ReportIssueDocument =
     ReportIssueDocument(
       reportId = "report-1",
@@ -63,7 +68,7 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
   "insertMany" should {
 
     "insert multiple report issues for a reportId" in {
-      await(repo.collection.drop().toFuture())
+      resetCollection()
 
       await(repo.insertMany(Seq(issue1, issue2)))
 
@@ -72,7 +77,7 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
     }
 
     "do nothing when given an empty sequence" in {
-      await(repo.collection.drop().toFuture())
+      resetCollection()
 
       await(repo.insertMany(Seq.empty))
 
@@ -85,7 +90,7 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
   "findByReportId" should {
 
     "return issues for the given reportId" in {
-      await(repo.collection.drop().toFuture())
+      resetCollection()
 
       await(repo.insertMany(Seq(issue1, issue2, issue3)))
 
@@ -96,7 +101,7 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
     }
 
     "respect skip and limit parameters" in {
-      await(repo.collection.drop().toFuture())
+      resetCollection()
 
       val issues =
         (1 to 5).map { i =>
@@ -112,7 +117,7 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
     }
 
     "return empty sequence when no issues exist for the reportId" in {
-      await(repo.collection.drop().toFuture())
+      resetCollection()
 
       val results =
         await(repo.findByReportId("unknown-report", skip = 0, limit = 10))
@@ -125,7 +130,7 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
   "countByReportId" should {
 
     "return the correct number of issues for a reportId" in {
-      await(repo.collection.drop().toFuture())
+      resetCollection()
 
       await(repo.insertMany(Seq(issue1, issue2, issue3)))
 
@@ -136,12 +141,24 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
     }
 
     "return zero when no issues exist for the reportId" in {
-      await(repo.collection.drop().toFuture())
+      resetCollection()
 
       val count =
         await(repo.countByReportId("missing-report"))
 
       count shouldBe 0
+    }
+  }
+
+  "deleteByReportIds" should {
+    "delete only issues for the supplied report IDs" in {
+      resetCollection()
+      await(repo.insertMany(Seq(issue1, issue2, issue3)))
+
+      await(repo.deleteByReportIds(Seq("report-1")))
+
+      await(repo.countByReportId("report-1")) shouldBe 0
+      await(repo.countByReportId("report-2")) shouldBe 1
     }
   }
 }

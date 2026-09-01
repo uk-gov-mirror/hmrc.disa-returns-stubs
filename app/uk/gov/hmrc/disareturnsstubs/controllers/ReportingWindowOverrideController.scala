@@ -19,7 +19,7 @@ package uk.gov.hmrc.disareturnsstubs.controllers
 import jakarta.inject.{Inject, Singleton}
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, ControllerComponents}
-import uk.gov.hmrc.disareturnsstubs.models.ReportingWindowOverrideRequest
+import uk.gov.hmrc.disareturnsstubs.models.{ReportingWindowOverrideRequest, ZReference}
 import uk.gov.hmrc.disareturnsstubs.repositories.ReportingWindowOverrideRepository
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
@@ -32,15 +32,15 @@ class ReportingWindowOverrideController @Inject() (
 )(implicit ec: ExecutionContext)
     extends BackendController(cc) {
 
-  def set: Action[JsValue] = Action.async(parse.json) { request =>
-    request.headers.get("X-Cred-Id").map(_.trim).filter(_.nonEmpty) match {
-      case None         => Future.successful(BadRequest(Json.obj("error" -> "Missing X-Cred-Id header")))
-      case Some(credId) =>
+  def set(zReference: String): Action[JsValue] = Action.async(parse.json) { request =>
+    ZReference.normalize(zReference) match {
+      case None                       => Future.successful(BadRequest(Json.obj("error" -> "Invalid zReference")))
+      case Some(normalizedZReference) =>
         request.body
           .validate[ReportingWindowOverrideRequest]
           .fold(
             _ => Future.successful(BadRequest(Json.obj("error" -> "Invalid reporting window override"))),
-            overrideRequest => repository.set(credId, overrideRequest).map(_ => NoContent)
+            overrideRequest => repository.set(normalizedZReference, overrideRequest).map(_ => NoContent)
           )
     }
   }

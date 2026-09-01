@@ -59,16 +59,16 @@ class ReportingWindowOverrideRepositorySpec extends BaseUnitSpec {
     "upsert and replace an override with a refreshed one-hour expiry" in {
       await(
         repository.set(
-          "cred-1",
+          "Z1234",
           ReportingWindowOverrideRequest(now.minusSeconds(60), now.plusSeconds(60))
         )
       )
 
-      val first = await(repository.getActive("cred-1")).value
+      val first = await(repository.getActive("Z1234")).value
       first.expiresAt shouldBe now.plusSeconds(3600)
 
-      await(repository.set("cred-1", ReportingWindowOverrideRequest(now, now.plusSeconds(120))))
-      val updated = await(repository.getActive("cred-1")).value
+      await(repository.set("Z1234", ReportingWindowOverrideRequest(now, now.plusSeconds(120))))
+      val updated = await(repository.getActive("Z1234")).value
 
       updated.startDate                                        shouldBe now
       updated.endDate                                          shouldBe now.plusSeconds(120)
@@ -76,20 +76,30 @@ class ReportingWindowOverrideRepositorySpec extends BaseUnitSpec {
     }
 
     "store timestamps as BSON dates for the TTL index" in {
-      await(repository.set("cred-1", ReportingWindowOverrideRequest(now, now.plusSeconds(60))))
+      await(repository.set("Z1234", ReportingWindowOverrideRequest(now, now.plusSeconds(60))))
 
-      val document = await(rawCollection.find(Filters.equal("_id", "cred-1")).first().toFuture())
+      val document = await(rawCollection.find(Filters.equal("_id", "Z1234")).first().toFuture())
 
       document.toBsonDocument.get("expiresAt").getBsonType shouldBe BsonType.DATE_TIME
       document.toBsonDocument.get("updatedAt").getBsonType shouldBe BsonType.DATE_TIME
     }
 
-    "isolate overrides by credential ID" in {
-      await(repository.set("cred-1", ReportingWindowOverrideRequest(now, now.plusSeconds(60))))
-      await(repository.set("cred-2", ReportingWindowOverrideRequest(now, now.plusSeconds(120))))
+    "isolate overrides by Z-reference" in {
+      await(repository.set("Z1234", ReportingWindowOverrideRequest(now, now.plusSeconds(60))))
+      await(repository.set("Z5678", ReportingWindowOverrideRequest(now, now.plusSeconds(120))))
 
-      await(repository.getActive("cred-1")).value.endDate shouldBe now.plusSeconds(60)
-      await(repository.getActive("cred-2")).value.endDate shouldBe now.plusSeconds(120)
+      await(repository.getActive("Z1234")).value.endDate shouldBe now.plusSeconds(60)
+      await(repository.getActive("Z5678")).value.endDate shouldBe now.plusSeconds(120)
+    }
+
+    "delete only overrides for the supplied Z-references" in {
+      await(repository.set("Z1234", ReportingWindowOverrideRequest(now, now.plusSeconds(60))))
+      await(repository.set("Z5678", ReportingWindowOverrideRequest(now, now.plusSeconds(120))))
+
+      await(repository.deleteByZReferences(Seq("Z1234")))
+
+      await(repository.getActive("Z1234")) shouldBe None
+      await(repository.getActive("Z5678"))   should not be empty
     }
   }
 }

@@ -36,7 +36,6 @@ import scala.concurrent.Future
 class ReportingWindowOverrideControllerSpec extends BaseUnitSpec {
 
   private implicit lazy val materializer: Materializer = app.materializer
-  private val credentialIdHeader                       = "X-Cred-Id"
   private val startDate                                = Instant.parse("2026-08-25T11:00:00Z")
   private val endDate                                  = Instant.parse("2026-08-25T13:00:00Z")
   private val validBody                                = Json.obj(
@@ -44,41 +43,29 @@ class ReportingWindowOverrideControllerSpec extends BaseUnitSpec {
     "endDate"   -> endDate.toString
   )
 
-  private def request(body: play.api.libs.json.JsValue, credentialId: Option[String] = Some("cred-1")) = {
-    val headers = Seq(CONTENT_TYPE -> JSON) ++ credentialId.map(credentialIdHeader -> _)
-    FakeRequest(PUT, "/reporting-window-override").withHeaders(headers*).withBody(body)
-  }
+  private def request(body: play.api.libs.json.JsValue) =
+    FakeRequest(PUT, "/reporting-window-override/z1234").withHeaders(CONTENT_TYPE -> JSON).withBody(body)
 
   "set" should {
-    "store a valid override for the credential ID" in {
+    "store a valid override using the normalized Z-reference" in {
       val repository = mock[ReportingWindowOverrideRepository]
       val controller = new ReportingWindowOverrideController(stubControllerComponents(), repository)
-      when(repository.set(eqTo("cred-1"), any())).thenReturn(Future.unit)
+      when(repository.set(eqTo("Z1234"), any())).thenReturn(Future.unit)
 
-      val result = controller.set(request(validBody, Some(" cred-1 ")))
+      val result = controller.set(" z1234 ")(request(validBody))
 
       status(result) shouldBe NO_CONTENT
-      verify(repository).set("cred-1", ReportingWindowOverrideRequest(startDate, endDate))
+      verify(repository).set("Z1234", ReportingWindowOverrideRequest(startDate, endDate))
     }
 
-    "return BadRequest when the credential ID header is missing" in {
+    "return BadRequest for an invalid Z-reference" in {
       val repository = mock[ReportingWindowOverrideRepository]
       val controller = new ReportingWindowOverrideController(stubControllerComponents(), repository)
 
-      val result = controller.set(request(validBody, None))
+      val result = controller.set("Z123")(request(validBody))
 
       status(result)                               shouldBe BAD_REQUEST
-      (contentAsJson(result) \ "error").as[String] shouldBe "Missing X-Cred-Id header"
-      verify(repository, never()).set(any(), any())
-    }
-
-    "return BadRequest when the credential ID header is blank" in {
-      val repository = mock[ReportingWindowOverrideRepository]
-      val controller = new ReportingWindowOverrideController(stubControllerComponents(), repository)
-
-      val result = controller.set(request(validBody, Some("   ")))
-
-      status(result) shouldBe BAD_REQUEST
+      (contentAsJson(result) \ "error").as[String] shouldBe "Invalid zReference"
       verify(repository, never()).set(any(), any())
     }
 
@@ -90,7 +77,7 @@ class ReportingWindowOverrideControllerSpec extends BaseUnitSpec {
         "endDate"   -> startDate.toString
       )
 
-      val result = controller.set(request(invalidBody))
+      val result = controller.set("Z1234")(request(invalidBody))
 
       status(result)                               shouldBe BAD_REQUEST
       (contentAsJson(result) \ "error").as[String] shouldBe "Invalid reporting window override"

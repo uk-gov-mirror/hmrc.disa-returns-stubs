@@ -1,0 +1,2 @@
+POST       /reconciliation-report-data/cleanup       uk.gov.hmrc.disareturnsstubs.testOnly.controllers.TestOnlyReconciliationReportDataController.delete()
+POST       /reporting-window-overrides/cleanup       uk.gov.hmrc.disareturnsstubs.testOnly.controllers.TestOnlyReportingWindowOverrideController.delete()

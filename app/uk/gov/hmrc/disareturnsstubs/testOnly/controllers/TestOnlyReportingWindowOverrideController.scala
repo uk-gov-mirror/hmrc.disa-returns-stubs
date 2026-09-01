@@ -14,32 +14,35 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.disareturnsstubs.controllers
+package uk.gov.hmrc.disareturnsstubs.testOnly.controllers
 
 import jakarta.inject.{Inject, Singleton}
-import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.disareturnsstubs.controllers.action.AuthorizationFilter
+import play.api.libs.json.JsValue
+import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.disareturnsstubs.models.ZReference
-import uk.gov.hmrc.disareturnsstubs.services.ReportingWindowService
+import uk.gov.hmrc.disareturnsstubs.repositories.ReportingWindowOverrideRepository
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class ReportingWindowController @Inject() (
+class TestOnlyReportingWindowOverrideController @Inject() (
   cc: ControllerComponents,
-  service: ReportingWindowService,
-  authorizationFilter: AuthorizationFilter
+  reportingWindowOverrideRepository: ReportingWindowOverrideRepository
 )(implicit ec: ExecutionContext)
     extends BackendController(cc) {
 
-  def status(zReference: String): Action[AnyContent] =
-    (Action andThen authorizationFilter).async { request =>
-      ZReference.normalize(zReference) match {
-        case Some(normalizedZReference) =>
-          service.isOpen(normalizedZReference).map(open => Ok(Json.obj("reportingWindowOpen" -> open)))
-        case None                       => Future.successful(BadRequest(Json.obj("error" -> "Invalid zReference")))
-      }
+  def delete(): Action[JsValue] = Action.async(parse.json) { request =>
+    (request.body \ "zReferences").validate[Seq[String]].asOpt match {
+      case Some(zReferences) if zReferences.nonEmpty =>
+        val normalized = zReferences.map(ZReference.normalize)
+
+        if (normalized.exists(_.isEmpty)) {
+          Future.successful(BadRequest)
+        } else {
+          reportingWindowOverrideRepository.deleteByZReferences(normalized.flatten.distinct).map(_ => NoContent)
+        }
+      case _                                         => Future.successful(BadRequest)
     }
+  }
 }

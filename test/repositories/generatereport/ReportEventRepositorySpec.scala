@@ -132,4 +132,18 @@ class ReportEventRepositorySpec extends BaseUnitSpec {
 
     }
   }
+
+  "deleteByZReferences" should {
+    "delete only events for the supplied Z-references" in {
+      await(repo.collection.drop().toFuture())
+      val otherEvent = event1.copy(reportId = "report-3", zReference = "Z1235")
+      await(repo.upsert(event1))
+      await(repo.upsert(otherEvent))
+
+      await(repo.deleteByZReferences(Seq(validZReference)))
+
+      await(repo.find(validZReference)) shouldBe None
+      await(repo.find("Z1235"))         shouldBe Some(otherEvent)
+    }
+  }
 }

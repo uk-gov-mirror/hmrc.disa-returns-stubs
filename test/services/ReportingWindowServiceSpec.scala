@@ -41,12 +41,12 @@ class ReportingWindowServiceSpec extends BaseUnitSpec {
   }
 
   "isOpen" should {
-    "use an active override for the credential" in {
-      when(repository.getActive("cred-1")).thenReturn(
+    "use an active override for the Z-reference" in {
+      when(repository.getActive("Z1234")).thenReturn(
         Future.successful(
           Some(
             ReportingWindowOverride(
-              "cred-1",
+              "Z1234",
               now.minusSeconds(60),
               now.plusSeconds(60),
               now.plusSeconds(3600),
@@ -56,15 +56,15 @@ class ReportingWindowServiceSpec extends BaseUnitSpec {
         )
       )
 
-      service.isOpen("cred-1").futureValue shouldBe true
+      service.isOpen("Z1234").futureValue shouldBe true
     }
 
     "treat the window as closed when the current instant is outside an active override" in {
-      when(repository.getActive("cred-1")).thenReturn(
+      when(repository.getActive("Z1234")).thenReturn(
         Future.successful(
           Some(
             ReportingWindowOverride(
-              "cred-1",
+              "Z1234",
               now.minusSeconds(120),
               now.minusSeconds(60),
               now.plusSeconds(3600),
@@ -74,21 +74,21 @@ class ReportingWindowServiceSpec extends BaseUnitSpec {
         )
       )
 
-      service.isOpen("cred-1").futureValue shouldBe false
+      service.isOpen("Z1234").futureValue shouldBe false
     }
 
     "fall back to the normal reporting period when no override exists" in {
-      when(repository.getActive("cred-1")).thenReturn(Future.successful(None))
+      when(repository.getActive("Z1234")).thenReturn(Future.successful(None))
 
-      service.isOpen("cred-1").futureValue shouldBe false
+      service.isOpen("Z1234").futureValue shouldBe false
     }
 
     "use inclusive override boundaries" in {
-      when(repository.getActive("cred-1")).thenReturn(
-        Future.successful(Some(ReportingWindowOverride("cred-1", now, now, now.plusSeconds(3600), now)))
+      when(repository.getActive("Z1234")).thenReturn(
+        Future.successful(Some(ReportingWindowOverride("Z1234", now, now, now.plusSeconds(3600), now)))
       )
 
-      service.isOpen("cred-1").futureValue shouldBe true
+      service.isOpen("Z1234").futureValue shouldBe true
     }
   }
 }

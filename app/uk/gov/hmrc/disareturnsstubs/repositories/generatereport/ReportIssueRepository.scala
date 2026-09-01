@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.disareturnsstubs.repositories.generatereport
 
-import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.Filters.{equal, in}
 import org.mongodb.scala.model.{IndexModel, IndexOptions, Indexes, Sorts}
 import play.api.Logging
 import uk.gov.hmrc.disareturnsstubs.config.AppConfig
@@ -73,4 +73,8 @@ class ReportIssueRepository @Inject() (mc: MongoComponent, appConfig: AppConfig)
     collection
       .countDocuments(equal("reportId", reportId))
       .toFuture()
+
+  def deleteByReportIds(reportIds: Seq[String]): Future[Unit] =
+    if (reportIds.isEmpty) Future.successful(())
+    else collection.deleteMany(in("reportId", reportIds: _*)).toFuture().map(_ => ())
 }

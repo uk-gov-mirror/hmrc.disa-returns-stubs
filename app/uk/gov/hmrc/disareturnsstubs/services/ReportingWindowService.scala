@@ -30,8 +30,8 @@ class ReportingWindowService @Inject() (
   clock: Clock
 )(implicit ec: ExecutionContext) {
 
-  def isOpen(credId: String): Future[Boolean] =
-    repository.getActive(credId).map {
+  def isOpen(zReference: String): Future[Boolean] =
+    repository.getActive(zReference).map {
       case Some(overrideWindow) =>
         val now = Instant.now(clock)
         !now.isBefore(overrideWindow.startDate) && !now.isAfter(overrideWindow.endDate)

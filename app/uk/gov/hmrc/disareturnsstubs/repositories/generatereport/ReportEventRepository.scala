@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.disareturnsstubs.repositories.generatereport
 
-import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.Filters.{equal, in}
 import org.mongodb.scala.model.{IndexModel, IndexOptions, Indexes, ReplaceOptions}
 import org.mongodb.scala.result.UpdateResult
 import play.api.Logging
@@ -66,4 +66,10 @@ class ReportEventRepository @Inject() (mc: MongoComponent, appConfig: AppConfig)
     collection
       .find(equal("zReference", zReference))
       .headOption()
+
+  def findByZReferences(zReferences: Seq[String]): Future[Seq[ReportEvent]] =
+    collection.find(in("zReference", zReferences: _*)).toFuture()
+
+  def deleteByZReferences(zReferences: Seq[String]): Future[Unit] =
+    collection.deleteMany(in("zReference", zReferences: _*)).toFuture().map(_ => ())
 }
