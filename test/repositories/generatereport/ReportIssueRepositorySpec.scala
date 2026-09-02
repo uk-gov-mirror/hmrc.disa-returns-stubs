@@ -19,6 +19,7 @@ package repositories.generatereport
 import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Json
 import play.api.test.Helpers.await
 import uk.gov.hmrc.disareturnsstubs.config.AppConfig
 import uk.gov.hmrc.disareturnsstubs.models.IssueIdentifiedMessage
@@ -159,6 +160,29 @@ class ReportIssueRepositorySpec extends BaseUnitSpec {
 
       await(repo.countByReportId("report-1")) shouldBe 0
       await(repo.countByReportId("report-2")) shouldBe 1
+    }
+  }
+
+  "deleteByZReferences" should {
+    "delete all tagged issues for the supplied Z-references only" in {
+      resetCollection()
+      val firstOwnedIssue  = issue1.copy(zReference = Some("Z1234"))
+      val secondOwnedIssue = issue2.copy(reportId = "old-report", zReference = Some("Z1234"))
+      val otherOwnedIssue  = issue3.copy(zReference = Some("Z5678"))
+      await(repo.insertMany(Seq(firstOwnedIssue, secondOwnedIssue, otherOwnedIssue, issue1)))
+
+      await(repo.deleteByZReferences(Seq("Z1234")))
+
+      val stored = await(repo.collection.find().toFuture())
+      stored should contain theSameElementsAs Seq(otherOwnedIssue, issue1)
+    }
+  }
+
+  "format" should {
+    "read legacy documents without a zReference" in {
+      val legacyJson = Json.toJson(issue1).as[play.api.libs.json.JsObject] - "zReference"
+
+      legacyJson.as[ReportIssueDocument] shouldBe issue1
     }
   }
 }

@@ -26,7 +26,8 @@ case class ReportIssueDocument(
   accountNumber: String,
   nino: String,
   issueIdentified: IssueIdentified,
-  createdAt: Instant = Instant.now()
+  createdAt: Instant = Instant.now(),
+  zReference: Option[String] = None
 )
 
 object ReportIssueDocument {

@@ -264,8 +264,10 @@ Test-only endpoints require the service to run with
 
 ## Clean Reconciliation Report Data
 
-Deletes report events and their currently associated report issues for the supplied Z-references. It must not run
-during active traffic for those Z-references.
+Deletes all tagged report issues for the supplied Z-references, then deletes any issues associated with their current
+report events as a fallback for legacy untagged data, and finally deletes the events. It must not run during active
+traffic for those Z-references. Legacy untagged issues whose report event has already been replaced or removed cannot
+be attributed to a Z-reference and remain until their TTL expires.
 
 ### Endpoint:
 ```bash

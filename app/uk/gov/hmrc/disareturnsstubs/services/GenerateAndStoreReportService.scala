@@ -66,7 +66,8 @@ class GenerateAndStoreReportService @Inject() (
           reportId = reportId,
           accountNumber = result.accountNumber,
           nino = result.nino,
-          issueIdentified = result.issueIdentified
+          issueIdentified = result.issueIdentified,
+          zReference = Some(zReference)
         )
       }
 

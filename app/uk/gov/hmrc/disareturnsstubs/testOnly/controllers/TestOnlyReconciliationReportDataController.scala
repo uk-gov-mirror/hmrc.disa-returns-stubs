@@ -45,6 +45,7 @@ class TestOnlyReconciliationReportDataController @Inject() (
 
           for {
             reportEvents <- reportEventRepository.findByZReferences(normalizedZReferences)
+            _            <- reportIssueRepository.deleteByZReferences(normalizedZReferences)
             _            <- reportIssueRepository.deleteByReportIds(reportEvents.map(_.reportId))
             _            <- reportEventRepository.deleteByZReferences(normalizedZReferences)
           } yield NoContent

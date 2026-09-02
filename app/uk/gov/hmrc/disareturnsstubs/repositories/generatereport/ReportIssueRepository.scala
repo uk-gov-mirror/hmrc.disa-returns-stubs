@@ -41,6 +41,7 @@ class ReportIssueRepository @Inject() (mc: MongoComponent, appConfig: AppConfig)
             Indexes.ascending("_id")
           )
         ),
+        IndexModel(Indexes.ascending("zReference")),
         IndexModel(
           Indexes.ascending("createdAt"),
           IndexOptions()
@@ -77,4 +78,8 @@ class ReportIssueRepository @Inject() (mc: MongoComponent, appConfig: AppConfig)
   def deleteByReportIds(reportIds: Seq[String]): Future[Unit] =
     if (reportIds.isEmpty) Future.successful(())
     else collection.deleteMany(in("reportId", reportIds: _*)).toFuture().map(_ => ())
+
+  def deleteByZReferences(zReferences: Seq[String]): Future[Unit] =
+    if (zReferences.isEmpty) Future.successful(())
+    else collection.deleteMany(in("zReference", zReferences: _*)).toFuture().map(_ => ())
 }
