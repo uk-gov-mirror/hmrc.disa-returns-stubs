@@ -59,7 +59,7 @@ class GenerateAndStoreReportServiceSpec extends BaseUnitSpec {
 
       val documents = ArgumentCaptor.forClass(classOf[Seq[ReportIssueDocument]])
       verify(reportIssueRepository).insertMany(documents.capture())
-      documents.getValue should have size 1
+      documents.getValue                   should have size 1
       documents.getValue.head.zReference shouldBe Some("Z1234")
     }
   }
